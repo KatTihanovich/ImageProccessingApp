@@ -41,7 +41,7 @@ class ImageProcessorApp:
                              padding=6,
                              borderwidth=0,
                              relief="flat")
-        self.style.map('TButton', background=[('active', self.colors["button_hover"])] )
+        self.style.map('TButton', background=[('active', self.colors["button_hover"])])
         self.style.configure('TCombobox',
                              font=('Arial', 10),
                              fieldbackground=self.colors["entry_bg"],
@@ -116,7 +116,7 @@ class ImageProcessorApp:
         self.method_var = tk.StringVar(value=self.methods[0])
         self.dropdown = ttk.Combobox(frame, values=self.methods, textvariable=self.method_var, state="readonly", width=30)
         self.dropdown.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
-        self.dropdown.bind("<<ComboboxSelected>>", lambda e: self.create_param_entries())
+        self.dropdown.bind("<<ComboboxSelected>>", lambda e: self.update_grayscale_canvas())
 
         # Кнопка применения метода
         btn_apply = ttk.Button(frame, text="Apply", command=self.apply_method)
@@ -132,19 +132,38 @@ class ImageProcessorApp:
         self.param_vars = {}
         self.create_param_entries()
 
-    # Создание полей параметров для выбранного метода
+    def update_grayscale_canvas(self):
+        method_name = self.method_var.get()
+        if method_name in self.grayscale_methods:
+            self.canvas_gray.grid()
+        else:
+            self.canvas_gray.grid_remove()
+
+    # Создание полей параметров для всех методов сразу в два столбца
     def create_param_entries(self):
         for widget in self.param_frame.winfo_children():
             widget.destroy()
-        method_name = self.method_var.get()
-        params = self.method_params.get(method_name, {})
+
         self.param_vars = {}
-        for i, (pname, pdefault) in enumerate(params.items()):
-            tk.Label(self.param_frame, text=f"{pname}:", bg=self.colors["frame"], fg=self.colors["text"]).grid(row=i, column=0, sticky="w", padx=5)
-            var = tk.StringVar(value=str(pdefault))
-            entry = tk.Entry(self.param_frame, textvariable=var, width=10)
-            entry.grid(row=i, column=1, sticky="w", padx=5)
-            self.param_vars[pname] = var
+        col_count = 2  # два столбца
+        row_positions = [0] * col_count
+        col = 0
+
+        for method_name, params in self.method_params.items():
+            if not params:
+                continue
+            lbl_method = tk.Label(self.param_frame, text=f"{method_name} parameters:",
+                                  bg=self.colors["frame"], fg=self.colors["text"], font=('Arial', 10, 'bold'))
+            lbl_method.grid(row=row_positions[col], column=col*2, columnspan=2, sticky="w", padx=5, pady=(5,0))
+            row_positions[col] += 1
+            for pname, pdefault in params.items():
+                tk.Label(self.param_frame, text=f"{pname}:", bg=self.colors["frame"], fg=self.colors["text"]).grid(row=row_positions[col], column=col*2, sticky="w", padx=20)
+                var = tk.StringVar(value=str(pdefault))
+                entry = tk.Entry(self.param_frame, textvariable=var, width=10)
+                entry.grid(row=row_positions[col], column=col*2 + 1, sticky="w", padx=5)
+                self.param_vars[(method_name, pname)] = var
+                row_positions[col] += 1
+            col = (col + 1) % col_count  # переключаем столбец
 
     # Работа с изображениями
     def load_image(self):
@@ -157,7 +176,7 @@ class ImageProcessorApp:
                 self.show_image(self.original, self.canvas_original)
                 self.canvas_processed.config(image='')
                 self.canvas_gray.config(image='')
-                self.canvas_gray.grid_remove()
+                self.update_grayscale_canvas()
 
     def show_image(self, img, canvas):
         if img is not None:
@@ -174,13 +193,10 @@ class ImageProcessorApp:
         if self.original is None:
             return
         method_name = self.method_var.get()
-        if method_name in self.grayscale_methods:
-            self.canvas_gray.grid()
-        else:
-            self.canvas_gray.grid_remove()
-
+        self.update_grayscale_canvas()
         # Получаем параметры из полей
-        params = {k: self.safe_cast(v.get()) for k, v in self.param_vars.items()} if self.param_vars else {}
+        params = {pname: self.safe_cast(var.get())
+                  for (mname, pname), var in self.param_vars.items() if mname == method_name}
         self.processed = self.processing_methods[method_name](**params)
         self.show_image(self.processed, self.canvas_processed)
 
@@ -234,7 +250,7 @@ class ImageProcessorApp:
     def gaussian_blur(self, kernel=GAUSSIAN_KERNEL):
         gray = cv2.cvtColor(self.original, cv2.COLOR_RGB2GRAY)
         self.show_image(gray, self.canvas_gray)
-        k = kernel if kernel % 2 == 1 else kernel + 1  # ядро должно быть нечетным
+        k = kernel if kernel % 2 == 1 else kernel + 1
         return cv2.GaussianBlur(gray, (k, k), 0)
 
     def laplacian_sharp(self, ksize=LAPLACIAN_KSIZE):
@@ -272,8 +288,11 @@ class ImageProcessorApp:
         imgs = [self.original]
         titles = ["Original"]
         for name, func in self.processing_methods.items():
-            # используем дефолтные параметры
-            params = self.method_params.get(name, {})
+            params = {}
+            for pname in self.method_params.get(name, {}):
+                var = self.param_vars.get((name, pname))
+                if var:
+                    params[pname] = self.safe_cast(var.get())
             imgs.append(func(**params))
             titles.append(name)
         win = tk.Toplevel(self.root)
