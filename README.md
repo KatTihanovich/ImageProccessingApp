@@ -23,7 +23,7 @@
 | Pillow (PIL)    | 9.0.0                                  |
 
 Для запуска приложения вам потребуется:
-1) Склонировать репозиторий, используя URL https://github.com/KatTihanovich/CV_practice_1.git
+1) Склонировать репозиторий, используя URL https://github.com/KatTihanovich/ImageProccessingApp.git
 2) Установить необхоодимые библиотеки с помощью команды *pip install opencv-python numpy pillow*
 3) Запустить приложение в среде с помщью кнопки **Run**, или же через терминал с помощью команды *python image_processor_app.py*
 4) Также при клонировании загрузится приложение image_processing_app.exe, которое можно запустить просто дважды нажав на него
