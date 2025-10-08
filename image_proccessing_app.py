@@ -8,6 +8,10 @@ from PIL import Image, ImageTk
 # Значения по умолчанию
 ROTATE_ANGLE = 45
 PIXEL_SHIFT = 30
+THRESHOLD_VALUE = 128
+GAUSSIAN_KERNEL = 5
+SOBEL_KSIZE = 3
+LAPLACIAN_KSIZE = 3
 
 class ImageProcessorApp:
     def __init__(self, root):
@@ -37,7 +41,7 @@ class ImageProcessorApp:
                              padding=6,
                              borderwidth=0,
                              relief="flat")
-        self.style.map('TButton', background=[('active', self.colors["button_hover"])])
+        self.style.map('TButton', background=[('active', self.colors["button_hover"])] )
         self.style.configure('TCombobox',
                              font=('Arial', 10),
                              fieldbackground=self.colors["entry_bg"],
@@ -71,6 +75,23 @@ class ImageProcessorApp:
             "Rotate": self.rotate
         }
 
+        # Словарь параметров с дефолтными значениями
+        self.method_params = {
+            "Gray Avg": {},
+            "Gray HSV": {},
+            "Threshold": {"thresh": THRESHOLD_VALUE},
+            "Otsu": {},
+            "Normalize": {},
+            "Equalize": {},
+            "Stretch": {},
+            "Gaussian Blur": {"kernel": GAUSSIAN_KERNEL},
+            "Laplacian Sharp": {"ksize": LAPLACIAN_KSIZE},
+            "Sobel Edges": {"ksize": SOBEL_KSIZE},
+            "Shift Horizontal": {"pixels": PIXEL_SHIFT},
+            "Shift Vertical": {"pixels": PIXEL_SHIFT},
+            "Rotate": {"angle": ROTATE_ANGLE}
+        }
+
         self.create_widgets()
 
     def create_widgets(self):
@@ -84,7 +105,7 @@ class ImageProcessorApp:
         self.canvas_processed.grid(row=0, column=1, padx=10, pady=10)
         self.canvas_gray = tk.Label(frame, text='Grayscale Image', bg='white', relief='groove', borderwidth=2)
         self.canvas_gray.grid(row=0, column=2, padx=10, pady=10)
-        self.canvas_gray.grid_remove()  # Скрываем по умолчанию
+        self.canvas_gray.grid_remove()
 
         # Кнопка загрузки изображения
         btn_load = ttk.Button(frame, text="Load Image", command=self.load_image)
@@ -95,6 +116,7 @@ class ImageProcessorApp:
         self.method_var = tk.StringVar(value=self.methods[0])
         self.dropdown = ttk.Combobox(frame, values=self.methods, textvariable=self.method_var, state="readonly", width=30)
         self.dropdown.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+        self.dropdown.bind("<<ComboboxSelected>>", lambda e: self.create_param_entries())
 
         # Кнопка применения метода
         btn_apply = ttk.Button(frame, text="Apply", command=self.apply_method)
@@ -104,16 +126,25 @@ class ImageProcessorApp:
         btn_visualize = ttk.Button(frame, text="Show All Steps", command=self.visualize)
         btn_visualize.grid(row=2, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
 
-        # Поля ввода для угла и сдвига
-        tk.Label(frame, text="Angle (°):", bg=self.colors["frame"], fg=self.colors["text"]).grid(row=4, column=0, sticky="w", padx=5)
-        self.angle_var = tk.StringVar(value=str(ROTATE_ANGLE))
-        self.entry_angle = tk.Entry(frame, textvariable=self.angle_var, width=10)
-        self.entry_angle.grid(row=4, column=1, sticky="w", padx=5)
+        # Фрейм для параметров метода
+        self.param_frame = ttk.Frame(self.root, padding=10, style='TFrame')
+        self.param_frame.pack(fill=tk.BOTH, expand=True)
+        self.param_vars = {}
+        self.create_param_entries()
 
-        tk.Label(frame, text="Shift pixels:", bg=self.colors["frame"], fg=self.colors["text"]).grid(row=5, column=0, sticky="w", padx=5)
-        self.shift_var = tk.StringVar(value=str(PIXEL_SHIFT))
-        self.entry_shift = tk.Entry(frame, textvariable=self.shift_var, width=10)
-        self.entry_shift.grid(row=5, column=1, sticky="w", padx=5)
+    # Создание полей параметров для выбранного метода
+    def create_param_entries(self):
+        for widget in self.param_frame.winfo_children():
+            widget.destroy()
+        method_name = self.method_var.get()
+        params = self.method_params.get(method_name, {})
+        self.param_vars = {}
+        for i, (pname, pdefault) in enumerate(params.items()):
+            tk.Label(self.param_frame, text=f"{pname}:", bg=self.colors["frame"], fg=self.colors["text"]).grid(row=i, column=0, sticky="w", padx=5)
+            var = tk.StringVar(value=str(pdefault))
+            entry = tk.Entry(self.param_frame, textvariable=var, width=10)
+            entry.grid(row=i, column=1, sticky="w", padx=5)
+            self.param_vars[pname] = var
 
     # Работа с изображениями
     def load_image(self):
@@ -143,14 +174,22 @@ class ImageProcessorApp:
         if self.original is None:
             return
         method_name = self.method_var.get()
-
         if method_name in self.grayscale_methods:
             self.canvas_gray.grid()
         else:
             self.canvas_gray.grid_remove()
 
-        self.processed = self.processing_methods[method_name]()
+        # Получаем параметры из полей
+        params = {k: self.safe_cast(v.get()) for k, v in self.param_vars.items()} if self.param_vars else {}
+        self.processed = self.processing_methods[method_name](**params)
         self.show_image(self.processed, self.canvas_processed)
+
+    # Безопасное преобразование строки в число
+    def safe_cast(self, val, typ=int):
+        try:
+            return typ(val)
+        except ValueError:
+            return val
 
     # Методы обработки с промежуточным grayscale
     def gray_avg(self):
@@ -163,10 +202,10 @@ class ImageProcessorApp:
         self.show_image(gray, self.canvas_gray)
         return gray
 
-    def threshold(self):
+    def threshold(self, thresh=THRESHOLD_VALUE):
         gray = cv2.cvtColor(self.original, cv2.COLOR_RGB2GRAY)
         self.show_image(gray, self.canvas_gray)
-        _, result = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
+        _, result = cv2.threshold(gray, thresh, 255, cv2.THRESH_BINARY)
         return result
 
     def otsu(self):
@@ -192,48 +231,37 @@ class ImageProcessorApp:
         max_val = np.max(gray)
         return ((gray - min_val) * 255.0 / (max_val - min_val)).astype(np.uint8)
 
-    def gaussian_blur(self):
+    def gaussian_blur(self, kernel=GAUSSIAN_KERNEL):
         gray = cv2.cvtColor(self.original, cv2.COLOR_RGB2GRAY)
         self.show_image(gray, self.canvas_gray)
-        return cv2.GaussianBlur(gray, (5,5), 0)
+        k = kernel if kernel % 2 == 1 else kernel + 1  # ядро должно быть нечетным
+        return cv2.GaussianBlur(gray, (k, k), 0)
 
-    def laplacian_sharp(self):
+    def laplacian_sharp(self, ksize=LAPLACIAN_KSIZE):
         gray = cv2.cvtColor(self.original, cv2.COLOR_RGB2GRAY)
         self.show_image(gray, self.canvas_gray)
-        lap = cv2.Laplacian(gray, cv2.CV_64F)
+        lap = cv2.Laplacian(gray, cv2.CV_64F, ksize=ksize)
         return cv2.convertScaleAbs(gray - lap)
 
-    def sobel_edges(self):
+    def sobel_edges(self, ksize=SOBEL_KSIZE):
         gray = cv2.cvtColor(self.original, cv2.COLOR_RGB2GRAY)
         self.show_image(gray, self.canvas_gray)
-        grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
-        grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+        grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=ksize)
+        grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=ksize)
         abs_grad_x = cv2.convertScaleAbs(grad_x)
         abs_grad_y = cv2.convertScaleAbs(grad_y)
         return cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
 
     # Геометрические преобразования
-    def shift_horizontal(self):
-        try:
-            shift = int(self.shift_var.get())
-        except ValueError:
-            shift = PIXEL_SHIFT
-        return np.roll(self.original, shift, axis=1)
+    def shift_horizontal(self, pixels=PIXEL_SHIFT):
+        return np.roll(self.original, pixels, axis=1)
 
-    def shift_vertical(self):
-        try:
-            shift = int(self.shift_var.get())
-        except ValueError:
-            shift = PIXEL_SHIFT
-        return np.roll(self.original, shift, axis=0)
+    def shift_vertical(self, pixels=PIXEL_SHIFT):
+        return np.roll(self.original, pixels, axis=0)
 
-    def rotate(self):
-        try:
-            angle = float(self.angle_var.get())
-        except ValueError:
-            angle = ROTATE_ANGLE
+    def rotate(self, angle=ROTATE_ANGLE):
         h, w = self.original.shape[:2]
-        center = (w//2, h//2)
+        center = (w // 2, h // 2)
         M = cv2.getRotationMatrix2D(center, angle, 1.0)
         return cv2.warpAffine(self.original, M, (w, h))
 
@@ -241,14 +269,13 @@ class ImageProcessorApp:
     def visualize(self):
         if self.original is None:
             return
-
         imgs = [self.original]
         titles = ["Original"]
-
         for name, func in self.processing_methods.items():
-            imgs.append(func())
+            # используем дефолтные параметры
+            params = self.method_params.get(name, {})
+            imgs.append(func(**params))
             titles.append(name)
-
         win = tk.Toplevel(self.root)
         win.title("All Processing Steps")
         max_columns = 5
