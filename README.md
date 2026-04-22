@@ -1,37 +1,70 @@
-# ImageProccessingApp
+# ImageProcessingApp
 
-Графическое приложение для базовой обработки изображений с интерактивным интерфейсом на Tkinter. Позволяет применять различные фильтры, преобразования и визуализировать результаты.
+A graphical application for basic image processing with an interactive interface built using Tkinter.  
+It allows users to apply various filters, transformations, and visualize the results.
 
-Методы обработки, которые доступны в данном приложении:
+This project is part of a **Computer Vision** course and demonstrates practical image processing techniques using OpenCV.
 
-* Оттенки серого (среднее RGB и канал V HSV)
-* Бинаризация (фиксированный порог и метод Отсу)
-* Нормализация и растяжение гистограммы
-* Эквализация гистограммы
-* Размытие и повышение резкости (Gaussian Blur, Laplacian)
-* Выделение краев (Sobel)
-* Сдвиг изображения по горизонтали и вертикали
-* Поворот изображения на произвольный угол
+---
 
-Требования:
+## Available Processing Methods
 
-| Библиотека/Язык | Необходимая версия                     |
-|-----------------|----------------------------------------|
-| Python          | 3.10                                   |
-| OpenCV (cv2)    | 4.5.0                                  |
-| NumPy           | 1.21.0                                 |
-| Pillow (PIL)    | 9.0.0                                  |
+- Grayscale conversion (average RGB and HSV V channel)
+- Binarization (fixed threshold and Otsu’s method)
+- Histogram normalization and stretching
+- Histogram equalization
+- Blurring and sharpening (Gaussian Blur, Laplacian)
+- Edge detection (Sobel)
+- Image translation (horizontal and vertical shifting)
+- Image rotation by an arbitrary angle
 
-Для запуска приложения вам потребуется:
-1) Склонировать репозиторий, используя URL https://github.com/KatTihanovich/ImageProccessingApp.git
-2) Установить необхоодимые библиотеки с помощью команды *pip install opencv-python numpy pillow*
-3) Запустить приложение в среде с помщью кнопки **Run**, или же через терминал с помощью команды *python image_processor_app.py*
-4) Также при клонировании загрузится приложение image_processing_app.exe, которое можно запустить просто дважды нажав на него
+---
 
-Для использования приложения после загрузки:
-1) Загрузить изображение с вашего устройства, нажав на кнопку **Load image**
-2) Выбрать необходимый метод обработки изображения
-3) Нажать кнопку **Apply**
-4) Для отображения всех результатов нажать кнопку **Show all steps**
-5) При необходимости измените параметры выбранного метода в соответствующих полях
-6) Для скачивания изображения нажать одну из кнопок save (save original, save grayscale, save processed)
+## Requirements
+
+| Library / Language | Required Version |
+|-------------------|-----------------|
+| Python            | 3.10            |
+| OpenCV (cv2)      | 4.5.0           |
+| NumPy             | 1.21.0          |
+| Pillow (PIL)      | 9.0.0           |
+
+---
+
+## Installation & Launch
+
+1. Clone the repository:
+*https://github.com/KatTihanovich/ImageProccessingApp.git*
+
+2. Install the required libraries:
+*pip install opencv-python numpy pillow*
+
+3. Run the application:
+- From your IDE using the **Run** button, or
+- From the terminal:
+  ```
+  python image_processor_app.py
+  ```
+4. Alternatively, you can run the precompiled executable:
+- `image_processing_app.exe` (double-click to launch)
+
+---
+
+## Usage
+
+1. Load an image using the **Load Image** button
+2. Select the desired image processing method
+3. Click **Apply**
+4. Click **Show All Steps** to visualize all processing stages
+5. Adjust parameters if needed using the input fields
+6. Save results using one of the save options:
+- Save original
+- Save grayscale
+- Save processed
+
+---
+
+## Notes
+
+- Some methods require parameter tuning for optimal results
+- Best results are achieved with good-quality input images
